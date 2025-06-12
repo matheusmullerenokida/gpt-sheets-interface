@@ -1,28 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GPT + Google Sheets</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 30px; }
-    input[type=text] { width: 100%; padding: 10px; margin-bottom: 10px; }
-    button { padding: 10px 20px; }
-    .card { background: #f5f5f5; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
-    .resposta { color: #333; margin-top: 5px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>GPT + Planilha</title>
 </head>
 <body>
-  <h1>Enviar pergunta ao GPT</h1>
-  <form method="POST">
-    <input type="text" name="pergunta" placeholder="Digite sua pergunta..." required />
-    <button type="submit">Enviar para a planilha</button>
-  </form>
+    <h2>GPT + Planilha</h2>
 
-  <h2>Perguntas e Respostas</h2>
-  {% for pergunta, resposta in perguntas_respostas %}
-    <div class="card">
-      <strong>Pergunta:</strong> {{ pergunta }}<br/>
-      <div class="resposta"><strong>Resposta:</strong> {{ resposta or "(ainda sem resposta)" }}</div>
-    </div>
-  {% endfor %}
+    <form method="post">
+        <textarea name="pergunta" rows="3" cols="80" placeholder="Digite sua pergunta"></textarea><br>
+        <button type="submit">Enviar</button>
+    </form>
+
+    <form method="post">
+        <input type="hidden" name="pergunta" value="resetar">
+        <button type="submit">🔁 Resetar contexto</button>
+    </form>
+
+    <hr>
+    {% for pergunta, resposta in historico %}
+        <b>Você:</b> {{ pergunta }}<br>
+        <b>GPT:</b> {{ resposta }}<br><hr>
+    {% endfor %}
 </body>
 </html>

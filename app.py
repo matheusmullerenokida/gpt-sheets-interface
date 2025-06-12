@@ -1,77 +1,61 @@
-from flask import Flask, request, render_template_string, redirect
 import os
+import json
+import openai
 import gspread
+from flask import Flask, request, redirect, render_template
 from google.oauth2.service_account import Credentials
-from datetime import datetime
-from openai import OpenAI
 
 app = Flask(__name__)
 
-# GPT client (novo estilo openai 1.30+)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# 🔐 Configurações da API OpenAI
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
-# Config planilha
+# 🔐 Configuração do Google Sheets
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-credentials_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
-spreadsheet_id = os.getenv("SPREADSHEET_ID")
+SERVICE_ACCOUNT_INFO = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
+client = gspread.authorize(creds)
+sheet = client.open_by_key(os.environ["SPREADSHEET_ID"]).sheet1
 
-# Conexão com Google Sheets
-import json
-creds = Credentials.from_service_account_info(json.loads(credentials_json), scopes=SCOPES)
-gc = gspread.authorize(creds)
-sheet = gc.open_by_key(spreadsheet_id).sheet1
-
-# System prompt e histórico
-system_prompt = os.getenv("SYSTEM_PROMPT", "Você é um assistente útil.")
-historico = [{"role": "system", "content": system_prompt}]
+# 🧠 Memória de contexto da conversa
+contexto = [
+    {"role": "system", "content": "Você é um assistente útil e objetivo."}
+]
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    global historico
+    global contexto
 
     if request.method == "POST":
         pergunta = request.form["pergunta"]
 
         if pergunta.strip().lower() == "resetar":
-            historico = [{"role": "system", "content": system_prompt}]
+            contexto = [{"role": "system", "content": "Você é um assistente útil e objetivo."}]
             return redirect("/")
 
-        historico.append({"role": "user", "content": pergunta})
+        contexto.append({"role": "user", "content": pergunta})
+
         try:
-            resposta = client.chat.completions.create(
+            resposta = openai.chat.completions.create(
                 model="gpt-4o",
-                messages=historico,
+                messages=contexto,
                 max_tokens=300
-            ).choices[0].message.content
+            ).choices[0].message.content.strip()
 
-            historico.append({"role": "assistant", "content": resposta})
-
-            sheet.append_row([datetime.now().isoformat(), pergunta, resposta])
+            contexto.append({"role": "assistant", "content": resposta})
+            sheet.append_row([pergunta, resposta])
 
         except Exception as e:
-            resposta = f"[ERRO AO CHAMAR GPT: {str(e)}]"
+            resposta = f"[ERRO AO CHAMAR GPT: {e}]"
+            contexto.append({"role": "assistant", "content": resposta})
 
-    else:
-        resposta = None
+        return redirect("/")
 
-    historico_ui = [x for x in historico if x["role"] in ["user", "assistant"]]
+    # Carregar últimas interações da planilha (opcional visual)
+    historico = sheet.get_all_values()[1:]  # Ignora cabeçalho
 
-    return render_template_string("""
-        <h2>GPT + Planilha</h2>
-        <form method="post">
-            <textarea name="pergunta" rows="3" cols="80" placeholder="Escreva sua pergunta aqui"></textarea><br>
-            <button type="submit">Enviar</button>
-        </form>
-        <form method="post">
-            <input type="hidden" name="pergunta" value="resetar" />
-            <button type="submit">🔁 Resetar contexto</button>
-        </form>
-        <hr>
-        {% for i in range(0, historico|length, 2) %}
-            <b>Você:</b> {{ historico[i].content }}<br>
-            <b>GPT:</b> {{ historico[i+1].content if i+1 < historico|length else "" }}<br><hr>
-        {% endfor %}
-    """, historico=historico_ui, resposta=resposta)
+    return render_template("index.html", historico=historico)
 
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
