@@ -1,18 +1,19 @@
-from flask import Flask, render_template, request, redirect
+import os
+import json
 import gspread
-from google.oauth2.service_account import Credentials
 import openai
+from flask import Flask, render_template, request, redirect
+from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
 
 # Configuração
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-import json
+
 SERVICE_ACCOUNT_INFO = json.loads(os.environ['GOOGLE_CREDENTIALS_JSON'])
 creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
 
 SPREADSHEET_ID = '1m3IV0MQrqwac4O4B_vmuH4cHlYydQ_rO7IyK7x_mAks'
-import os
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
 # Autenticação
