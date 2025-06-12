@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
 
-# Configuração
+# Configurações
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 SERVICE_ACCOUNT_INFO = json.loads(os.environ['GOOGLE_CREDENTIALS_JSON'])
@@ -25,12 +25,15 @@ def index():
     if request.method == "POST":
         nova_pergunta = request.form.get("pergunta")
         if nova_pergunta:
-            # Chama o GPT direto aqui
+            # Chama o GPT direto com system prompt
             try:
                 response = openai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": nova_pergunta}],
-                    max_tokens=200
+                    model="gpt-4o",  # ou "gpt-4o-mini" se quiser economizar
+                    messages=[
+                        {"role": "system", "content": "Você é um assistente útil e objetivo, que responde com clareza."},
+                        {"role": "user", "content": nova_pergunta}
+                    ],
+                    max_tokens=300
                 )
                 resposta_gerada = response.choices[0].message.content.strip()
             except Exception as e:
