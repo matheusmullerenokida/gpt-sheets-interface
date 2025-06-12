@@ -15,7 +15,8 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SERVICE_ACCOUNT_INFO = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
 creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
 client = gspread.authorize(creds)
-sheet = client.open_by_key(os.environ["SPREADSHEET_ID"]).sheet1
+sheet = client.open_by_key(os.environ["SPREADSHEET_ID"]).worksheet("GPT")
+
 
 # 🧠 Memória de contexto da conversa
 contexto = [
